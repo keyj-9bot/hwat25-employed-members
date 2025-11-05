@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-📘 hwat25-employed-members (최종 안정판)
-- 교수: 모든 메뉴 접근
-- 학생: 질문 게시판만 접근
-- 파일명 한글 보존 + 수정 시 기존파일 유지 + dtype 안정화
+📘 hwat25-employed-members (최종 안정판 - 완전형)
+- 교수 페이지 정상 접근
+- 학생/교수 권한 완전 분리
+- 파일명 한글 정상 표시
+- 질문 수정 시 기존 파일 보존 + 새 파일 추가
+- dtype 및 인코딩 완전 안정화
 작성자: Key 교수님
 """
 
@@ -15,6 +17,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
 
+# ───────────── 경로 설정 ─────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -34,12 +37,13 @@ def load_csv(path):
 def save_csv(path, df):
     df.to_csv(path, index=False, encoding="utf-8-sig")
 
-# ───────────── 한글 파일명 보존 함수 ─────────────
+# ───────────── 파일명 한글 보존 ─────────────
 def safe_filename(filename):
     filename = os.path.basename(filename)
+    # 영문 + 한글 + 괄호 + 공백 + 점 + 숫자 허용
     return re.sub(r'[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9._() ]', '', filename).strip()
 
-# ───────────── 홈(로그인) ─────────────
+# ───────────── 홈 (로그인) ─────────────
 @app.route("/", methods=["GET", "POST"])
 def home():
     message = None
@@ -65,7 +69,7 @@ def home():
             session["email"] = email
             session["role"] = "professor"
             flash("✅ 교수 계정으로 로그인되었습니다.", "success")
-            return redirect(url_for("questions_page"))
+            return redirect(url_for("professor_page"))
         elif email in student_emails:
             session["email"] = email
             session["role"] = "student"
@@ -82,7 +86,15 @@ def logout():
     flash("👋 로그아웃되었습니다.", "info")
     return redirect(url_for("home"))
 
-# ───────────── 질문 게시판 ─────────────
+# ───────────── 교수 페이지 ─────────────
+@app.route("/professor")
+def professor_page():
+    if "email" not in session or session.get("role") != "professor":
+        flash("⛔ 접근 권한이 없습니다. (교수 전용 페이지)", "danger")
+        return redirect(url_for("questions_page"))
+    return render_template("professor.html", email=session["email"])
+
+# ───────────── 질문 페이지 ─────────────
 @app.route("/questions", methods=["GET", "POST"])
 def questions_page():
     if "email" not in session:
@@ -132,12 +144,10 @@ def edit_question(index):
         flash("잘못된 접근입니다.", "danger")
         return redirect(url_for("questions_page"))
 
-    # 🔹 본인 글 또는 교수만 수정 가능
     if df.at[index, "email"] != session["email"] and session.get("role") != "professor":
         flash("⛔ 수정 권한이 없습니다.", "danger")
         return redirect(url_for("questions_page"))
 
-    # 🔹 기존 파일 유지 + 새 파일 추가
     old_files = str(df.at[index, "files"]) if pd.notna(df.at[index, "files"]) else ""
     old_file_list = [f.strip() for f in old_files.split(";") if f.strip()]
 
@@ -149,7 +159,7 @@ def edit_question(index):
             file.save(os.path.join(UPLOAD_FOLDER, filename))
             new_file_list.append(filename)
 
-    merged_files = list(dict.fromkeys(old_file_list + new_file_list))  # 중복 제거
+    merged_files = list(dict.fromkeys(old_file_list + new_file_list))
     files_str = ";".join(merged_files)
 
     df.at[index, "content"] = str(request.form.get("content", "").strip())
