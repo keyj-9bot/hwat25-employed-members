@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-📘 hwat25-employed-members (최종 안정판)
+📘 hwat25-employed-members (최종 안정판 v2)
 - 교수/학생 구분 로그인
-- 교수: 모든 메뉴 접근 (메시지 작성/수정/삭제/게시)
-- 학생: 질문 등록/수정/삭제 (파일 다중 등록 가능)
-- 한글 파일명 완벽 지원 (Render 환경 포함)
-- UTF-8-SIG 기반 CSV로 한글 깨짐 완전 방지
+- 교수: 메시지 등록/수정/삭제/게시
+- 학생: 질문 등록/수정/삭제 (파일 다중 등록)
+- 파일명 한글/영문 완전 호환
+- UTF-8-SIG 기반 CSV 인코딩
 작성자: Key 교수님
 """
 
@@ -13,7 +13,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import pandas as pd
 import os
 from datetime import datetime
-import urllib.parse  # ✅ 한글 파일명 인코딩용
 
 # ───────────── 기본 설정 ─────────────
 app = Flask(__name__)
@@ -101,7 +100,6 @@ def professor_page():
 
     return render_template("professor.html", messages=df.to_dict("records"))
 
-# ───────────── 교수 메시지 조작 ─────────────
 @app.route("/confirm_message/<int:index>", methods=["POST"])
 def confirm_message(index):
     df = load_csv(DATA_MESSAGES)
@@ -158,8 +156,7 @@ def questions_page():
 
         for file in files:
             if file and file.filename:
-                # ✅ 한글 파일명 안전하게 저장
-                filename = urllib.parse.quote(file.filename)
+                filename = file.filename  # ✅ 한글/영문 파일명 그대로
                 save_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(save_path)
                 saved_files.append(filename)
@@ -191,7 +188,7 @@ def edit_question(index):
 
         for file in files:
             if file and file.filename:
-                filename = urllib.parse.quote(file.filename)
+                filename = file.filename
                 save_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(save_path)
                 saved_files.append(filename)
@@ -214,11 +211,11 @@ def delete_question(index):
     flash("🗑️ 질문이 삭제되었습니다.", "warning")
     return redirect(url_for("questions_page"))
 
-# ───────────── 파일 다운로드 (한글 복원) ─────────────
+# ───────────── 파일 다운로드 ─────────────
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
-    decoded_name = urllib.parse.unquote(filename)
-    return send_from_directory(UPLOAD_FOLDER, decoded_name)
+    # ✅ UTF-8 파일명 지원 (quote/unquote 제거)
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 # ───────────── 로그아웃 ─────────────
 @app.route("/logout")
@@ -227,6 +224,5 @@ def logout():
     flash("👋 로그아웃되었습니다.", "info")
     return redirect(url_for("home"))
 
-# ───────────── 메인 ─────────────
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
