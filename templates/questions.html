@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="fw-bold mb-3">📘 질문 게시판</h4>
+
+<form method="POST" class="mb-4">
+  <input type="text" name="title" class="form-control mb-2" placeholder="제목" required>
+  <textarea name="content" class="form-control mb-2" placeholder="내용" rows="3" required></textarea>
+  <button type="submit" class="btn btn-success">등록</button>
+</form>
+
+<table class="table table-bordered bg-white">
+  <thead class="table-primary text-center">
+    <tr><th>ID</th><th>제목</th><th>내용</th><th>작성자</th><th>작성일</th></tr>
+  </thead>
+  <tbody>
+    {% for q in questions %}
+    <tr>
+      <td>{{ q.id }}</td>
+      <td>{{ q.title }}</td>
+      <td>{{ q.content }}</td>
+      <td>{{ q.email }}</td>
+      <td>{{ q.date }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
