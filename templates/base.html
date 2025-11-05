@@ -9,7 +9,7 @@
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="/">🏫 화트25 취업생 시스템</a>
+    <a class="navbar-brand fw-bold" href="/">🏫 화트25 취업생 공유시스템</a>
     <div>
       {% if session.get('role') == 'professor' %}
         <a href="{{ url_for('professor_page') }}" class="btn btn-outline-light btn-sm me-2">교수 페이지</a>
@@ -35,17 +35,13 @@
   {% block content %}{% endblock %}
 </div>
 
-<!-- 🩵 교수 메시지 팝업 -->
+<!-- 🩵 교수 메시지 팝업 (삭제 전까지 유지) -->
 {% if popup_msg %}
-<div id="popup-msg" class="position-fixed bottom-0 end-0 bg-primary text-white p-3 rounded shadow" style="margin:20px;">
-  <strong>📢 교수 메시지:</strong> {{ popup_msg }}
+<div id="popup-msg" class="position-fixed bg-primary text-white p-3 rounded shadow"
+     style="top: 25%; right: 3%; z-index: 1050; max-width: 350px;">
+  <strong>📢 교수 메시지:</strong>
+  <div>{{ popup_msg }}</div>
 </div>
-<script>
-  setTimeout(() => {
-    const popup = document.getElementById("popup-msg");
-    if (popup) popup.remove();
-  }, 12000);
-</script>
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

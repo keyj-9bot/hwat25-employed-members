@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-📘 hwat25-employed-members (Final Stable Version)
-- 교수: 메시지 등록/수정/삭제 및 게시확정 → 질문 페이지 팝업 표시
-- 취업생: 질문 등록/수정/삭제, 파일 다중 업로드 가능
-- 모든 기능 Render 환경에서 작동
+📘 hwat25-employed-members (Persistent Popup + Editable Questions Version)
+- 교수: 메시지 등록/수정/삭제 + 게시확정 시 팝업 (삭제 전까지 유지)
+- 취업생: 질문 등록/수정/삭제, 다중 파일 업로드, 한글 파일명 지원
 작성자: Key 교수님
 """
 
@@ -28,16 +27,17 @@ DATA_PROF_MSG = os.path.join(BASE_DIR, "professor_message.csv")
 # ───────────── 유틸 함수 ─────────────
 def load_emails():
     if not os.path.exists(DATA_EMAILS):
-        print(f"[⚠] 이메일 파일 없음: {DATA_EMAILS}")
         return []
     with open(DATA_EMAILS, "r", encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
 
 def load_csv(path):
     if os.path.exists(path):
-        return pd.read_csv(path, encoding="utf-8")
-    else:
-        return pd.DataFrame()
+        try:
+            return pd.read_csv(path, encoding="utf-8")
+        except:
+            return pd.read_csv(path, encoding="utf-8-sig")
+    return pd.DataFrame()
 
 def save_csv(path, df):
     df.to_csv(path, index=False, encoding="utf-8-sig")
@@ -61,12 +61,8 @@ def home():
         session["email"] = email
         session["role"] = "professor" if email == prof_email else "student"
 
-        if session["role"] == "professor":
-            flash("✅ 교수 로그인 성공", "success")
-            return redirect(url_for("professor_page"))
-        else:
-            flash("✅ 취업생 로그인 성공", "success")
-            return redirect(url_for("questions_page"))
+        flash(f"✅ 로그인 성공: {session['role']}", "success")
+        return redirect(url_for("professor_page" if session["role"] == "professor" else "questions_page"))
 
     return render_template("home.html")
 
@@ -77,7 +73,7 @@ def logout():
     flash("👋 로그아웃되었습니다.", "info")
     return redirect(url_for("home"))
 
-# ───────────── 교수 페이지 ─────────────
+# ───────────── 교수 메시지 관리 ─────────────
 @app.route("/professor", methods=["GET", "POST"])
 def professor_page():
     if "email" not in session or session.get("role") != "professor":
@@ -85,24 +81,18 @@ def professor_page():
         return redirect(url_for("home"))
 
     df = load_csv(DATA_PROF_MSG)
+    msg = df.iloc[0].to_dict() if not df.empty else None
 
     if request.method == "POST":
         message = request.form.get("message", "").strip()
-        status = "pending"
         date = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-        df = pd.DataFrame([{"message": message, "status": status, "date": date}])
+        df = pd.DataFrame([{"message": message, "status": "pending", "date": date}])
         save_csv(DATA_PROF_MSG, df)
-        flash("📢 메시지가 저장되었습니다. 게시 확정을 눌러주세요.", "info")
+        flash("💾 메시지가 저장되었습니다.", "info")
         return redirect(url_for("professor_page"))
-
-    msg = None
-    if not df.empty:
-        msg = df.iloc[0].to_dict()
 
     return render_template("professor.html", message=msg)
 
-# 게시 확정
 @app.route("/confirm_message", methods=["POST"])
 def confirm_message():
     df = load_csv(DATA_PROF_MSG)
@@ -112,17 +102,15 @@ def confirm_message():
         flash("✅ 게시 완료", "success")
     return redirect(url_for("professor_page"))
 
-# 메시지 수정
 @app.route("/edit_message", methods=["POST"])
 def edit_message():
     df = load_csv(DATA_PROF_MSG)
     if not df.empty:
         df.at[0, "status"] = "pending"
         save_csv(DATA_PROF_MSG, df)
-    flash("✏️ 메시지를 수정할 수 있습니다.", "warning")
+    flash("✏️ 수정 가능 상태로 전환되었습니다.", "warning")
     return redirect(url_for("professor_page"))
 
-# 메시지 삭제
 @app.route("/delete_message", methods=["POST"])
 def delete_message():
     if os.path.exists(DATA_PROF_MSG):
@@ -130,7 +118,7 @@ def delete_message():
     flash("🗑️ 메시지가 삭제되었습니다.", "info")
     return redirect(url_for("professor_page"))
 
-# ───────────── 질문 페이지 ─────────────
+# ───────────── 질문 게시판 ─────────────
 @app.route("/questions", methods=["GET", "POST"])
 def questions_page():
     if "email" not in session:
@@ -145,7 +133,6 @@ def questions_page():
         email = session["email"]
         date = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        # 파일 업로드
         uploaded_files = request.files.getlist("files")
         filenames = []
         for f in uploaded_files:
@@ -156,33 +143,53 @@ def questions_page():
                 filenames.append(fname)
         files_str = ";".join(filenames)
 
-        new_id = df["id"].max() + 1 if not df.empty else 1
+        new_id = int(df["id"].max() + 1) if not df.empty else 1
         new_row = pd.DataFrame([{
-            "id": new_id,
-            "email": email,
-            "title": title,
-            "content": content,
-            "files": files_str,
-            "date": date
+            "id": new_id, "email": email,
+            "title": title, "content": content,
+            "files": files_str, "date": date
         }])
         df = pd.concat([df, new_row], ignore_index=True)
         save_csv(DATA_QUESTIONS, df)
-        flash("💬 질문이 등록되었습니다.", "success")
+        flash("📘 질문이 등록되었습니다.", "success")
         return redirect(url_for("questions_page"))
 
-    # 팝업 표시 (교수 메시지가 게시 확정된 경우)
     msg_df = load_csv(DATA_PROF_MSG)
-    popup_msg = None
-    if not msg_df.empty and msg_df.at[0, "status"] == "confirmed":
-        popup_msg = msg_df.at[0, "message"]
+    popup_msg = msg_df.at[0, "message"] if not msg_df.empty and msg_df.at[0, "status"] == "confirmed" else None
+    return render_template("questions.html", questions=df.to_dict("records"), popup_msg=popup_msg, role=session["role"], email=session["email"])
 
-    return render_template("questions.html", questions=df.to_dict("records"), popup_msg=popup_msg)
+# 질문 수정
+@app.route("/edit_question/<int:q_id>", methods=["POST"])
+def edit_question(q_id):
+    df = load_csv(DATA_QUESTIONS)
+    idx = df.index[df["id"] == q_id].tolist()
+    if not idx:
+        flash("❌ 해당 질문을 찾을 수 없습니다.", "danger")
+        return redirect(url_for("questions_page"))
+    i = idx[0]
+    if session["email"] != df.at[i, "email"]:
+        flash("⛔ 본인만 수정 가능합니다.", "danger")
+        return redirect(url_for("questions_page"))
 
-# ───────────── 업로드 파일 라우트 ─────────────
+    df.at[i, "title"] = request.form.get("title", df.at[i, "title"])
+    df.at[i, "content"] = request.form.get("content", df.at[i, "content"])
+    save_csv(DATA_QUESTIONS, df)
+    flash("✏️ 질문이 수정되었습니다.", "success")
+    return redirect(url_for("questions_page"))
+
+# 질문 삭제
+@app.route("/delete_question/<int:q_id>", methods=["POST"])
+def delete_question(q_id):
+    df = load_csv(DATA_QUESTIONS)
+    df = df[df["id"] != q_id]
+    save_csv(DATA_QUESTIONS, df)
+    flash("🗑️ 질문이 삭제되었습니다.", "info")
+    return redirect(url_for("questions_page"))
+
+# ───────────── 파일 보기 ─────────────
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    return send_from_directory(UPLOAD_FOLDER, filename.encode('utf-8').decode('utf-8'))
 
-# ───────────── 실행 ─────────────
 if __name__ == "__main__":
     app.run(debug=True)

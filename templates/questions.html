@@ -4,7 +4,7 @@
 
 <form method="POST" enctype="multipart/form-data">
   <input type="text" name="title" class="form-control mb-2" placeholder="질문 제목" required>
-  <textarea name="content" class="form-control mb-2" rows="3" placeholder="질문 내용을 입력하세요" required></textarea>
+  <textarea name="content" class="form-control mb-2" rows="3" placeholder="직장에 관한 어떠한 내용이라도 입력하세요" required></textarea>
 
   <div id="fileInputs">
     <input type="file" name="files" class="form-control mb-1">
@@ -32,6 +32,16 @@
       </p>
     {% endif %}
     <small class="text-muted">작성자: {{ q.email }} / {{ q.date }}</small>
+    {% if email == q.email or role == 'professor' %}
+    <div class="mt-2">
+      <form method="POST" action="{{ url_for('edit_question', q_id=q.id|int) }}" style="display:inline;">
+        <button class="btn btn-outline-warning btn-sm">✏️ 수정</button>
+      </form>
+      <form method="POST" action="{{ url_for('delete_question', q_id=q.id|int) }}" style="display:inline;">
+        <button class="btn btn-outline-danger btn-sm">🗑️ 삭제</button>
+      </form>
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 {% else %}
