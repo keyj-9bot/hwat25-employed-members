@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>📘 교수 메시지 관리</h2>
+
+<form method="POST">
+  <input name="title" placeholder="제목" required><br>
+  <textarea name="content" placeholder="내용" required></textarea><br>
+  <button type="submit">등록</button>
+</form>
+
+<hr>
+{% for msg in msgs %}
+<div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+  <b>{{ msg.title }}</b> ({{ msg.date }})<br>
+  {{ msg.content }}<br>
+  <p>상태: {{ '✅ 게시 완료' if msg.status == 'confirmed' else '⏳ 게시 대기' }}</p>
+
+  <form method="POST" action="{{ url_for('edit_prof_msg', msg_id=msg.id) }}">
+    <input name="title" value="{{ msg.title }}">
+    <textarea name="content">{{ msg.content }}</textarea>
+    <button type="submit">수정</button>
+  </form>
+
+  {% if msg.status == 'pending' %}
+    <a href="{{ url_for('confirm_prof_msg', msg_id=msg.id) }}">📢 게시 확정</a>
+  {% else %}
+    <span>📢 게시 완료</span>
+  {% endif %}
+  |
+  <a href="{{ url_for('delete_prof_msg', msg_id=msg.id) }}">🗑️ 삭제</a>
+</div>
+{% endfor %}
+
+<a href="{{ url_for('logout') }}">로그아웃</a>
+{% endblock %}

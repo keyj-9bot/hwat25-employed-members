@@ -1,27 +1,55 @@
 {% extends "base.html" %}
 {% block content %}
-<h4 class="fw-bold mb-3">📘 질문 게시판</h4>
+<h2>💬 질문 게시판</h2>
 
-<form method="POST" class="mb-4">
-  <input type="text" name="title" class="form-control mb-2" placeholder="제목" required>
-  <textarea name="content" class="form-control mb-2" placeholder="내용" rows="3" required></textarea>
-  <button type="submit" class="btn btn-success">등록</button>
+<form method="POST" enctype="multipart/form-data">
+  <input name="title" placeholder="제목" required><br>
+  <textarea name="content" placeholder="내용" required></textarea><br>
+  <input type="file" name="files" multiple><br>
+  <button type="submit">등록</button>
 </form>
 
-<table class="table table-bordered bg-white">
-  <thead class="table-primary text-center">
-    <tr><th>ID</th><th>제목</th><th>내용</th><th>작성자</th><th>작성일</th></tr>
-  </thead>
-  <tbody>
-    {% for q in questions %}
-    <tr>
-      <td>{{ q.id }}</td>
-      <td>{{ q.title }}</td>
-      <td>{{ q.content }}</td>
-      <td>{{ q.email }}</td>
-      <td>{{ q.date }}</td>
-    </tr>
+<hr>
+{% for q in questions %}
+<div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+  <b>{{ q.title }}</b> ({{ q.email }} / {{ q.date }})<br>
+  {{ q.content }}<br>
+  {% if q.files %}
+    첨부파일:
+    {% for f in q.files.split(';') %}
+      <a href="{{ url_for('download_file', filename=f) }}">{{ f }}</a>
     {% endfor %}
-  </tbody>
-</table>
+  {% endif %}
+  <form method="POST" action="{{ url_for('edit_question', q_id=q.id) }}">
+    <input name="title" value="{{ q.title }}">
+    <textarea name="content">{{ q.content }}</textarea>
+    <button type="submit">수정</button>
+  </form>
+  <a href="{{ url_for('delete_question', q_id=q.id) }}">삭제</a>
+</div>
+{% endfor %}
+
+<!-- 팝업 영역 -->
+<div id="popup" style="display:none; position:fixed; bottom:20px; right:20px; background:#fff; border:2px solid #444; padding:10px; box-shadow:0px 0px 10px rgba(0,0,0,0.3);">
+  <h4 id="popup-title"></h4>
+  <p id="popup-content"></p>
+</div>
+
+<script>
+async function checkPopup() {
+  const res = await fetch("/popup_message");
+  const data = await res.json();
+  if (data.title) {
+    document.getElementById("popup-title").textContent = data.title;
+    document.getElementById("popup-content").textContent = data.content;
+    document.getElementById("popup").style.display = "block";
+  } else {
+    document.getElementById("popup").style.display = "none";
+  }
+}
+setInterval(checkPopup, 4000);
+checkPopup();
+</script>
+
+<a href="{{ url_for('logout') }}">로그아웃</a>
 {% endblock %}
