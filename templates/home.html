@@ -1,18 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card shadow mx-auto" style="max-width: 450px;">
+<div class="card shadow mx-auto" style="max-width: 420px;">
   <div class="card-body">
-    <h3 class="text-center mb-4 fw-bold">🎓 Hwat25 Employed Members</h3>
+    <h3 class="card-title text-center fw-bold mb-3">🎓 환영합니다^^</h3>
     <form method="POST">
       <div class="mb-3">
         <label class="form-label">이메일 주소</label>
-        <input type="email" name="email" class="form-control" placeholder="example@yc.ac.kr" required>
+        <input type="email" name="email" class="form-control" placeholder="*****@***.***" required>
       </div>
       <button type="submit" class="btn btn-primary w-100">로그인</button>
     </form>
-    {% if message %}
-      <div class="alert alert-danger text-center mt-3">{{ message }}</div>
-    {% endif %}
   </div>
 </div>
 {% endblock %}

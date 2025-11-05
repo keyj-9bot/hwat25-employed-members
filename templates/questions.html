@@ -1,63 +1,82 @@
 {% extends "base.html" %}
 {% block content %}
-<h3 class="fw-bold mb-3">💬 질문 공유</h3>
 
-<form method="POST" enctype="multipart/form-data">
-  <input type="text" name="title" class="form-control mb-2" placeholder="질문 제목" required>
-  <textarea name="content" class="form-control mb-2" rows="3" placeholder="직장에 관한 어떠한 내용이라도 입력하세요" required></textarea>
+<h3 class="fw-bold mb-3">💬 질문 등록 및 공유</h3>
+
+<form method="POST" enctype="multipart/form-data" id="questionForm">
+  <input type="hidden" name="id" id="questionId">
+
+  <input type="text" name="title" id="title" class="form-control mb-2" placeholder="질문 제목" required>
+  <textarea name="content" id="content" class="form-control mb-2" rows="3" placeholder="질문 내용" required></textarea>
 
   <div id="fileInputs">
     <input type="file" name="files" class="form-control mb-1">
   </div>
+
   <div class="d-flex mb-3">
     <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
     <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
   </div>
 
-  <button type="submit" class="btn btn-success w-100">📤 질문 등록</button>
+  <button type="submit" class="btn btn-success w-100 mt-2">📤 등록 / 수정 완료</button>
 </form>
 
 <hr>
-<h4 class="fw-bold mt-4">📋 등록된 질문</h4>
-{% if questions %}
+
+<h4 class="fw-bold mt-4">📚 등록된 질문</h4>
+
+{% if questions and questions|length > 0 %}
   {% for q in questions %}
   <div class="border rounded p-3 mb-3 bg-light shadow-sm">
     <h5 class="fw-bold">{{ q.title }}</h5>
-    <p>{{ q.content }}</p>
+    <p style="white-space: pre-wrap;">{{ q.content }}</p>
+
     {% if q.files %}
       <p>📎 첨부파일:
         {% for f in (q.files or '').split(';') if f.strip() %}
-          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
+          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>
+          <form action="{{ url_for('delete_question', q_id=q.id) }}" method="POST" style="display:inline;">
+            <button class="btn btn-sm btn-outline-danger ms-1">❌</button>
+          </form>
+          {% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
     {% endif %}
-    <small class="text-muted">작성자: {{ q.email }} / {{ q.date }}</small>
-    {% if email == q.email or role == 'professor' %}
+
+    <small class="text-muted">작성자: {{ q.email }} | {{ q.date }}</small>
+
     <div class="mt-2">
-      <form method="POST" action="{{ url_for('edit_question', q_id=q.id|int) }}" style="display:inline;">
-        <button class="btn btn-outline-warning btn-sm">✏️ 수정</button>
-      </form>
-      <form method="POST" action="{{ url_for('delete_question', q_id=q.id|int) }}" style="display:inline;">
-        <button class="btn btn-outline-danger btn-sm">🗑️ 삭제</button>
+      <button class="btn btn-sm btn-outline-primary" onclick="editQuestion('{{ q.id }}', '{{ q.title|escape }}', `{{ q.content|escape }}`)">✏️ 수정</button>
+      <form action="{{ url_for('delete_question', q_id=q.id) }}" method="POST" style="display:inline;">
+        <button class="btn btn-sm btn-outline-danger">🗑️ 삭제</button>
       </form>
     </div>
-    {% endif %}
   </div>
   {% endfor %}
 {% else %}
   <p class="text-muted">등록된 질문이 없습니다.</p>
 {% endif %}
 
+<!-- 🧩 JS: 파일·질문 관리 -->
 <script>
 function addFileInput() {
   const div = document.createElement('div');
   div.innerHTML = '<input type="file" name="files" class="form-control mb-1">';
   document.getElementById('fileInputs').appendChild(div);
 }
+
 function removeFileInput() {
   const div = document.getElementById('fileInputs');
   if (div.children.length > 1) div.removeChild(div.lastChild);
 }
+
+function editQuestion(id, title, content) {
+  document.getElementById('questionId').value = id;
+  document.getElementById('title').value = title;
+  document.getElementById('content').value = content;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 </script>
+
 {% endblock %}
 
