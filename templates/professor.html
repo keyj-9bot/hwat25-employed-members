@@ -1,29 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
-<h3 class="fw-bold mb-4">📢 교수 메시지 관리</h3>
+<h3 class="fw-bold mb-3">📢 교수 메시지 관리</h3>
 
-<form method="POST" action="{{ url_for('professor_page') }}">
-  <div class="mb-3">
-    <label class="form-label">메시지 내용</label>
-    <textarea name="message" rows="4" class="form-control" required>{{ message }}</textarea>
+<form method="POST">
+  <textarea name="message" class="form-control mb-2" rows="3" placeholder="학생들에게 전달할 메시지를 입력하세요">{{ message.message if message }}</textarea>
+  <button class="btn btn-success w-100">💾 저장</button>
+</form>
+
+{% if message %}
+  <div class="border rounded p-3 mt-3 bg-light shadow-sm">
+    <h5 class="fw-bold">현재 메시지</h5>
+    <p>{{ message.message }}</p>
+    <small class="text-muted">{{ message.date }}</small>
+    <div class="mt-2">
+      {% if message.status == 'confirmed' %}
+        <span class="badge bg-success">게시 완료</span>
+      {% else %}
+        <form method="POST" action="{{ url_for('confirm_message') }}" style="display:inline;">
+          <button class="btn btn-outline-primary btn-sm">✅ 게시 확정</button>
+        </form>
+      {% endif %}
+      <form method="POST" action="{{ url_for('edit_message') }}" style="display:inline;">
+        <button class="btn btn-outline-warning btn-sm">✏️ 수정</button>
+      </form>
+      <form method="POST" action="{{ url_for('delete_message') }}" style="display:inline;">
+        <button class="btn btn-outline-danger btn-sm">🗑️ 삭제</button>
+      </form>
+    </div>
   </div>
-
-  {% if status == "confirmed" %}
-    <button type="submit" class="btn btn-secondary" disabled>게시 완료 ✅</button>
-  {% else %}
-    <button type="submit" class="btn btn-success">게시 확정</button>
-  {% endif %}
-</form>
-
-{% if status == "confirmed" %}
-<form method="POST" action="{{ url_for('edit_message') }}" class="mt-3">
-  <button type="submit" class="btn btn-warning">✏ 수정</button>
-</form>
 {% endif %}
-
-<hr class="my-4">
-<div class="alert alert-info">
-  <strong>현재 로그인:</strong> {{ email }}
-</div>
 {% endblock %}
-
