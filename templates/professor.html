@@ -1,35 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>📘 교수 메시지 관리</h2>
+<h3 class="fw-bold mb-4">📢 교수 메시지 관리</h3>
 
-<form method="POST">
-  <input name="title" placeholder="제목" required><br>
-  <textarea name="content" placeholder="내용" required></textarea><br>
-  <button type="submit">등록</button>
+<form method="POST" action="{{ url_for('professor_page') }}">
+  <div class="mb-3">
+    <label class="form-label">메시지 내용</label>
+    <textarea name="message" rows="4" class="form-control" required>{{ message }}</textarea>
+  </div>
+
+  {% if status == "confirmed" %}
+    <button type="submit" class="btn btn-secondary" disabled>게시 완료 ✅</button>
+  {% else %}
+    <button type="submit" class="btn btn-success">게시 확정</button>
+  {% endif %}
 </form>
 
-<hr>
-{% for msg in msgs %}
-<div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-  <b>{{ msg.title }}</b> ({{ msg.date }})<br>
-  {{ msg.content }}<br>
-  <p>상태: {{ '✅ 게시 완료' if msg.status == 'confirmed' else '⏳ 게시 대기' }}</p>
+{% if status == "confirmed" %}
+<form method="POST" action="{{ url_for('edit_message') }}" class="mt-3">
+  <button type="submit" class="btn btn-warning">✏ 수정</button>
+</form>
+{% endif %}
 
-  <form method="POST" action="{{ url_for('edit_prof_msg', msg_id=msg.id) }}">
-    <input name="title" value="{{ msg.title }}">
-    <textarea name="content">{{ msg.content }}</textarea>
-    <button type="submit">수정</button>
-  </form>
-
-  {% if msg.status == 'pending' %}
-    <a href="{{ url_for('confirm_prof_msg', msg_id=msg.id) }}">📢 게시 확정</a>
-  {% else %}
-    <span>📢 게시 완료</span>
-  {% endif %}
-  |
-  <a href="{{ url_for('delete_prof_msg', msg_id=msg.id) }}">🗑️ 삭제</a>
+<hr class="my-4">
+<div class="alert alert-info">
+  <strong>현재 로그인:</strong> {{ email }}
 </div>
-{% endfor %}
-
-<a href="{{ url_for('logout') }}">로그아웃</a>
 {% endblock %}
+
