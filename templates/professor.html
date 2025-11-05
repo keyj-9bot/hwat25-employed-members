@@ -3,11 +3,10 @@
 <div class="container mt-4">
   <h3 class="fw-bold mb-3">📢 교수 메시지 관리</h3>
 
-  <!-- 메시지 등록/수정 폼 -->
+  <!-- 메시지 등록/수정 폼 (제목 제거) -->
   <form method="POST" class="mb-4">
     <input type="hidden" name="edit_id" id="edit_id" value="">
-    <input type="text" name="title" id="title" class="form-control mb-2" placeholder="메시지 제목" required>
-    <textarea name="content" id="content" class="form-control mb-2" rows="3" placeholder="메시지 내용" required></textarea>
+    <textarea name="content" id="content" class="form-control mb-2" rows="3" placeholder="교수 메시지를 입력하세요." required></textarea>
     <button type="submit" class="btn btn-success w-100">💬 저장 / 수정</button>
   </form>
 
@@ -17,7 +16,6 @@
   {% if messages and messages|length > 0 %}
     {% for msg in messages %}
     <div class="border rounded p-3 mb-3 bg-light shadow-sm">
-      <h5 class="fw-bold">{{ msg.title }}</h5>
       <p>{{ msg.content }}</p>
       <small class="text-muted">작성일: {{ msg.date }}</small>
 
@@ -28,10 +26,10 @@
           <a href="{{ url_for('professor_page', confirm=msg.id) }}" class="btn btn-sm btn-outline-success">✅ 게시 확정</a>
         {% endif %}
 
-        <button type="button" class="btn btn-sm btn-outline-primary" 
-                onclick="editMessage('{{ msg.id }}', '{{ msg.title|escape }}', '{{ msg.content|escape }}')">✏️ 수정</button>
+        <button type="button" class="btn btn-sm btn-outline-primary"
+                onclick="editMessage('{{ msg.id }}', '{{ msg.content|escape }}')">✏️ 수정</button>
 
-        <a href="{{ url_for('professor_page', delete=msg.id) }}" 
+        <a href="{{ url_for('professor_page', delete=msg.id) }}"
            class="btn btn-sm btn-outline-danger"
            onclick="return confirm('이 메시지를 삭제하시겠습니까?')">🗑️ 삭제</a>
       </div>
@@ -43,13 +41,11 @@
 </div>
 
 <script>
-function editMessage(id, title, content) {
+function editMessage(id, content) {
   document.getElementById("edit_id").value = id;
-  document.getElementById("title").value = title;
   document.getElementById("content").value = content;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
 {% endblock %}
-
 
