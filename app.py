@@ -21,7 +21,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-DATA_EMAILS = os.path.join(BASE_DIR, "allowed_emails.txt")
+DATA_EMAILS = os.path.join(BASE_DIR, "employed_allowed_emails.txt")
 DATA_QUESTIONS = os.path.join(BASE_DIR, "questions.csv")
 DATA_PROF_MSGS = os.path.join(BASE_DIR, "professor_msgs.csv")
 
