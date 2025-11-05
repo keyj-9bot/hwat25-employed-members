@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-📘 hwat25-employed-members (Final Stable Fix)
-- 교수: 메시지 작성, 수정, 삭제, 게시 확정 → 질문 페이지 팝업 표시
+📘 hwat25-employed-members (Final Perfect Stable)
+- 교수: 메시지 작성/수정/삭제/게시 확정 → 질문 페이지 팝업 표시
 - 학생: 질문 등록, 파일 다중 업로드/수정/삭제
 - 본인 글만 수정/삭제 가능
-- 파일명 한글 처리 및 NaN 오류 수정
+- 파일명 한글 정상 표시
+- NaN split 오류 완전 해결
 작성자: Key 교수님
 """
 
@@ -30,7 +31,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def load_csv(path):
     if os.path.exists(path):
         df = pd.read_csv(path, encoding="utf-8")
-        # ✅ NaN 처리 (핵심 수정)
+        # ✅ NaN 처리 (핵심)
         df = df.fillna({'files': '', 'content': '', 'title': ''})
         return df
     return pd.DataFrame(columns=["id", "email", "content", "files", "date"])
@@ -170,6 +171,10 @@ def questions_page():
         confirmed_msgs = df_msg[df_msg["confirmed"] == "yes"]
         if not confirmed_msgs.empty:
             popup_msg = confirmed_msgs.iloc[-1]["content"]
+
+    # ✅ NaN 강제 문자열 변환 (핵심 수정)
+    if not df.empty:
+        df["files"] = df["files"].astype(str)
 
     return render_template(
         "questions.html",
