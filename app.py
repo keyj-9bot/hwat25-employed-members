@@ -86,14 +86,68 @@ def logout():
     flash("👋 로그아웃되었습니다.", "info")
     return redirect(url_for("home"))
 
-# ───────────── 교수 페이지 ─────────────
-@app.route("/professor")
+# ───────────── 교수 페이지 (메시지 작성/수정/삭제/게시확정) ─────────────
+DATA_MESSAGES = os.path.join(BASE_DIR, "professor_messages.csv")
+
+@app.route("/professor", methods=["GET", "POST"])
 def professor_page():
     if "email" not in session or session.get("role") != "professor":
         flash("⛔ 접근 권한이 없습니다. (교수 전용 페이지)", "danger")
         return redirect(url_for("questions_page"))
-    return render_template("professor.html", email=session["email"])
 
+    df = load_csv(DATA_MESSAGES)
+    if request.method == "POST":
+        msg = request.form.get("message", "").strip()
+        if msg:
+            new_row = pd.DataFrame([{
+                "message": msg,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "confirmed": "no"
+            }])
+            df = pd.concat([df, new_row], ignore_index=True)
+            save_csv(DATA_MESSAGES, df)
+            flash("📢 교수 메시지가 등록되었습니다.", "success")
+        else:
+            flash("⚠️ 메시지를 입력해주세요.", "warning")
+        return redirect(url_for("professor_page"))
+
+    return render_template("professor.html", email=session["email"], messages=df.to_dict("records"))
+
+
+@app.route("/confirm_message/<int:index>", methods=["POST"])
+def confirm_message(index):
+    df = load_csv(DATA_MESSAGES)
+    if 0 <= index < len(df):
+        df.at[index, "confirmed"] = "yes"
+        save_csv(DATA_MESSAGES, df)
+        flash("✅ 게시가 확정되었습니다.", "success")
+    return redirect(url_for("professor_page"))
+
+
+@app.route("/edit_message/<int:index>", methods=["POST"])
+def edit_message(index):
+    df = load_csv(DATA_MESSAGES)
+    if 0 <= index < len(df):
+        df.at[index, "message"] = str(request.form.get("new_message", "").strip())
+        df.at[index, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        save_csv(DATA_MESSAGES, df)
+        flash("✏️ 메시지가 수정되었습니다.", "info")
+    return redirect(url_for("professor_page"))
+
+
+@app.route("/delete_message/<int:index>", methods=["POST"])
+def delete_message(index):
+    df = load_csv(DATA_MESSAGES)
+    if 0 <= index < len(df):
+        df = df.drop(index)
+        df.reset_index(drop=True, inplace=True)
+        save_csv(DATA_MESSAGES, df)
+        flash("🗑️ 메시지가 삭제되었습니다.", "info")
+    return redirect(url_for("professor_page"))
+
+
+
+# ───────────── 질문 페이지 ─────────────
 # ───────────── 질문 페이지 ─────────────
 @app.route("/questions", methods=["GET", "POST"])
 def questions_page():
@@ -102,6 +156,14 @@ def questions_page():
         return redirect(url_for("home"))
 
     df = load_csv(DATA_QUESTIONS)
+    popup_msg = None   # ✅ 추가 (교수 메시지 팝업용)
+
+    # 🔹 교수 메시지 CSV 중 confirmed='yes'인 최신 메시지 가져오기
+    if os.path.exists(DATA_MESSAGES):
+        msg_df = load_csv(DATA_MESSAGES)
+        confirmed_msgs = msg_df[msg_df["confirmed"] == "yes"]
+        if not confirmed_msgs.empty:
+            popup_msg = confirmed_msgs.iloc[-1]["message"]
 
     if request.method == "POST":
         content = request.form.get("content", "").strip()
@@ -130,7 +192,14 @@ def questions_page():
         flash("📘 질문이 등록되었습니다.", "success")
         return redirect(url_for("questions_page"))
 
-    return render_template("questions.html", questions=df.to_dict("records"), email=session["email"], role=session["role"])
+    return render_template(
+        "questions.html",
+        questions=df.to_dict("records"),
+        email=session["email"],
+        role=session["role"],
+        popup_msg=popup_msg  # ✅ 추가
+    )
+
 
 # ───────────── 질문 수정 ─────────────
 @app.route("/edit_question/<int:index>", methods=["POST"])
