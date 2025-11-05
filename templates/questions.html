@@ -1,84 +1,70 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-4">
-  <h3 class="fw-bold mb-3">💬 직장에 관한 알쓸잡 질문을 공유하세요</h3>
 
-  <!-- 등록/수정 폼 (제목 제거) -->
-  <form method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="edit_id" id="edit_id" value="">
-    <textarea name="content" id="content" class="form-control mb-2" rows="3" placeholder="질문 내용을 입력하세요." required></textarea>
+<h3 class="fw-bold mb-3">💬 질문 등록</h3>
 
-    <!-- 파일 입력 -->
-    <div id="fileInputs" class="mb-2">
-      <input type="file" name="files" class="form-control mb-1" multiple>
-    </div>
-    <div class="d-flex mb-3">
-      <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
-      <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
-    </div>
+<form method="POST" enctype="multipart/form-data">
+  <div class="mb-2">
+    <textarea name="content" class="form-control" rows="3" placeholder="질문 내용을 입력하세요" required></textarea>
+  </div>
 
-    <button type="submit" class="btn btn-success w-100 mt-2">📤 등록 / 수정 완료</button>
-  </form>
+  <div id="fileInputs">
+    <input type="file" name="files" class="form-control mb-2">
+  </div>
+  <div class="d-flex mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
+  </div>
 
-  <hr>
-  <h4 class="fw-bold mt-4 mb-3">📚 등록된 질문</h4>
+  <button type="submit" class="btn btn-success w-100 mt-2">📤 등록</button>
+</form>
 
-  {% if questions and questions|length > 0 %}
-    {% for q in questions %}
-    <div class="border rounded p-3 mb-3 bg-light shadow-sm">
-      <p>{{ q.content }}</p>
+<hr>
 
-      {% if q.files %}
-      <p>📎 첨부파일:
-        {% for f in (q.files or '').split(';') if f.strip() %}
-          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>
-          {% if not loop.last %}, {% endif %}
+<h4 class="fw-bold mt-4">📋 등록된 질문</h4>
+{% if questions and questions|length > 0 %}
+  {% for q in questions %}
+  <div class="border rounded p-3 mb-3 bg-light shadow-sm">
+    <p class="fw-semibold mb-1">{{ q.content }}</p>
+
+    {% if q.files %}
+      <p class="small mb-1">📎 첨부파일:
+        {% for f in (q.files|string).split(';') if f.strip() %}
+          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
-      {% endif %}
+    {% endif %}
 
-      <small class="text-muted">작성자: {{ q.email }} ｜ {{ q.date }}</small>
-      <div class="mt-2">
-        <button type="button" class="btn btn-sm btn-outline-primary me-2"
-                onclick="editQuestion('{{ q.id }}', '{{ q.content|escape }}')">✏️ 수정</button>
-        <a href="{{ url_for('questions_page', delete=q.id) }}"
-           class="btn btn-sm btn-outline-danger"
-           onclick="return confirm('이 질문을 삭제하시겠습니까?')">🗑️ 삭제</a>
-      </div>
+    <small class="text-muted">{{ q.email }} | {{ q.date }}</small>
+    <div class="mt-2">
+      <!-- 수정 -->
+      <form action="{{ url_for('edit_question', index=loop.index0) }}" method="POST" enctype="multipart/form-data" class="mb-1">
+        <textarea name="new_content" class="form-control mb-1" rows="2" placeholder="수정할 내용 입력">{{ q.content }}</textarea>
+        <input type="file" name="files" class="form-control mb-1">
+        <button type="submit" class="btn btn-sm btn-outline-info w-100">✏️ 수정</button>
+      </form>
+
+      <!-- 삭제 -->
+      <form action="{{ url_for('delete_question', index=loop.index0) }}" method="POST">
+        <button type="submit" class="btn btn-sm btn-outline-danger w-100">🗑️ 삭제</button>
+      </form>
     </div>
-    {% endfor %}
-  {% else %}
-    <p class="text-muted">등록된 질문이 없습니다.</p>
-  {% endif %}
-</div>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted">등록된 질문이 없습니다.</p>
+{% endif %}
 
-<!-- 🧩 JS: 파일 추가/삭제 + 수정 모드 -->
 <script>
 function addFileInput() {
   const div = document.createElement('div');
-  div.innerHTML = '<input type="file" name="files" class="form-control mb-1" multiple>';
+  div.innerHTML = '<input type="file" name="files" class="form-control mb-2">';
   document.getElementById('fileInputs').appendChild(div);
 }
-
 function removeFileInput() {
   const div = document.getElementById('fileInputs');
   if (div.children.length > 1) div.removeChild(div.lastChild);
 }
-
-function editQuestion(id, content) {
-  document.getElementById("edit_id").value = id;
-  document.getElementById("content").value = content;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
 </script>
 
-<!-- 💬 교수 팝업 메시지 -->
-{% if popup_msg %}
-<div id="profPopup" class="position-fixed bg-primary text-white rounded shadow p-3"
-     style="top: 25%; right: 20px; z-index: 9999; min-width: 250px;">
-  <strong>📢 교수 메시지</strong>
-  <p class="mb-1">{{ popup_msg }}</p>
-</div>
-{% endif %}
 {% endblock %}
-
