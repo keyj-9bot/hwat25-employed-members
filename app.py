@@ -12,11 +12,13 @@ import pandas as pd
 import os
 from datetime import datetime
 
+# 🔹 Render 환경에서도 절대경로로 파일을 인식하도록 설정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_EMAILS = os.path.join(BASE_DIR, "allowed_emails.txt")
+DATA_QUESTIONS = os.path.join(BASE_DIR, "questions.csv")
+
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_QUESTIONS = os.path.join(BASE_DIR, "questions.csv")
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path):
