@@ -1,14 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-3">💬 취업생 알쓸잡 내용 공유장</h3>
+
+<!-- 🔹 질문 등록 폼 -->
+<form method="POST" enctype="multipart/form-data">
+  <textarea name="content" class="form-control mb-2" rows="3" placeholder="공유/질문 내용을 입력하세요" required></textarea>
+
+  <!-- 📎 파일 업로드 -->
+  <div id="fileInputs">
+    <input type="file" name="files" class="form-control mb-1">
+  </div>
+  <div class="d-flex mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
+  </div>
+
+  <button type="submit" class="btn btn-success w-100 mt-2">📤 질문 등록</button>
+</form>
+
+<hr>
+
+<!-- 🔹 질문 목록 -->
+{% if questions and questions|length > 0 %}
+  {% for q in questions %}
+  <div class="border rounded p-3 mb-3 bg-light shadow-sm">
+    <p class="mb-1"><strong>{{ q.email }}</strong></p>
+    <p id="content_{{ loop.index0 }}">{{ q.content or '' }}</p>
+
+    {% if q.files %}
+      <p>📎 첨부파일:
+        {% for f in (q.files|string).split(';') if f.strip() %}
+          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
+    {% endif %}
+
+    <small class="text-muted">{{ q.date or '' }}</small>
+
+    <!-- 🔹 수정/삭제 버튼 (본인 글 또는 교수만) -->
+    {% if q.email == email or session.get("role") == "professor" %}
+    <div class="mt-2">
+      <button type="button" class="btn btn-sm btn-outline-info w-100 mb-1" onclick="toggleEdit({{ loop.index0 }})">✏️ 수정</button>
+
+      <form action="{{ url_for('delete_question', index=loop.index0) }}" method="POST">
+        <button type="submit" class="btn btn-sm btn-outline-danger w-100">🗑️ 삭제</button>
+      </form>
+    </div>
+
+    <!-- 🔹 수정 입력창 -->
+    <div id="editBox_{{ loop.index0 }}" class="mt-2" style="display:none;">
+      <form action="{{ url_for('edit_question', index=loop.index0) }}" method="POST" enctype="multipart/form-data">
+        <textarea name="content" class="form-control mb-2" rows="3">{{ q.content }}</textarea>
+
+        <div id="editFileInputs_{{ loop.index0 }}">
+          <input type="file" name="files" class="form-control mb-1">
+        </div>
+
+        <div class="d-flex mb-2">
+          <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addEditFileInput({{ loop.index0 }})">＋ 파일 추가</button>
+          <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeEditFileInput({{ loop.index0 }})">－ 파일 삭제</button>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">💾 수정 완료</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted">등록된 질문이 없습니다.</p>
+{% endif %}
+
+<!-- 🔹 교수 메시지 팝업 -->
+{% if popup_msg %}
+<div id="profPopup">{{ popup_msg }}</div>
+{% endif %}
+
+<!-- 🧩 JS -->
+<script>
+function addFileInput() {
+  const div = document.createElement('div');
+  div.innerHTML = '<input type="file" name="files" class="form-control mb-1">';
+  document.getElementById('fileInputs').appendChild(div);
+}
+function removeFileInput() {
+  const div = document.getElementById('fileInputs');
+  if (div.children.length > 1) div.removeChild(div.lastChild);
+}
 function toggleEdit(index) {
   const box = document.getElementById('editBox_' + index);
   box.style.display = (box.style.display === 'none') ? 'block' : 'none';
 }
-
 function addEditFileInput(index) {
   const div = document.createElement('div');
   div.innerHTML = '<input type="file" name="files" class="form-control mb-1">';
   document.getElementById('editFileInputs_' + index).appendChild(div);
 }
-
 function removeEditFileInput(index) {
   const div = document.getElementById('editFileInputs_' + index);
   if (div.children.length > 1) div.removeChild(div.lastChild);
