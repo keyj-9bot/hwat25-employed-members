@@ -87,6 +87,7 @@ def logout():
     return redirect(url_for("home"))
 
 # ───────────── 교수 페이지 (메시지 작성/수정/삭제/게시확정) ─────────────
+# ───────────── 교수 페이지 (메시지 작성/수정/삭제/게시확정) ─────────────
 DATA_MESSAGES = os.path.join(BASE_DIR, "professor_messages.csv")
 
 @app.route("/professor", methods=["GET", "POST"])
@@ -119,8 +120,9 @@ def confirm_message(index):
     df = load_csv(DATA_MESSAGES)
     if 0 <= index < len(df):
         df.at[index, "confirmed"] = "yes"
+        df.at[index, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
         save_csv(DATA_MESSAGES, df)
-        flash("✅ 게시가 확정되었습니다.", "success")
+        flash("✅ 게시가 완료되었습니다.", "success")
     return redirect(url_for("professor_page"))
 
 
@@ -130,8 +132,9 @@ def edit_message(index):
     if 0 <= index < len(df):
         df.at[index, "message"] = str(request.form.get("new_message", "").strip())
         df.at[index, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        df.at[index, "confirmed"] = "no"  # 🔹 수정 시 다시 게시 대기 상태로
         save_csv(DATA_MESSAGES, df)
-        flash("✏️ 메시지가 수정되었습니다.", "info")
+        flash("✏️ 메시지가 수정되었습니다. (게시 확정 필요)", "info")
     return redirect(url_for("professor_page"))
 
 
@@ -144,6 +147,7 @@ def delete_message(index):
         save_csv(DATA_MESSAGES, df)
         flash("🗑️ 메시지가 삭제되었습니다.", "info")
     return redirect(url_for("professor_page"))
+
 
 
 

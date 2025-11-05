@@ -21,21 +21,22 @@
     <small class="text-muted">등록일: {{ m.date or '' }}</small>
 
     <div class="mt-2">
-      {% if m.confirmed|string != 'yes' %}
+      <!-- 🔹 게시 상태에 따른 버튼 표시 -->
+      {% if m.confirmed|string == 'yes' %}
+        <span class="badge bg-success me-2">📢 게시 완료</span>
+      {% else %}
         <form action="{{ url_for('confirm_message', index=loop.index0) }}" method="POST" style="display:inline;">
           <button class="btn btn-sm btn-outline-success me-2">✅ 게시 확정</button>
         </form>
-      {% else %}
-        <span class="badge bg-success me-2">📢 게시 완료</span>
       {% endif %}
 
-      <!-- 수정 -->
+      <!-- 🔹 수정 폼 -->
       <form action="{{ url_for('edit_message', index=loop.index0) }}" method="POST" style="display:inline;">
         <input type="text" name="new_message" value="{{ m.message }}" class="form-control form-control-sm d-inline-block w-auto mb-1">
         <button class="btn btn-sm btn-outline-info">✏️ 수정</button>
       </form>
 
-      <!-- 삭제 -->
+      <!-- 🔹 삭제 버튼 -->
       <form action="{{ url_for('delete_message', index=loop.index0) }}" method="POST" style="display:inline;">
         <button class="btn btn-sm btn-outline-danger">🗑️ 삭제</button>
       </form>
@@ -47,4 +48,6 @@
 {% endif %}
 
 {% endblock %}
+
+
 
