@@ -1,67 +1,64 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="container mt-4">
+  <h3 class="fw-bold mb-3">💬 질문 등록 및 공유</h3>
 
-<h3 class="fw-bold mb-3">💬 질문 등록 및 공유</h3>
+  <!-- 등록/수정 폼 -->
+  <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="edit_id" id="edit_id" value="">
+    <input type="text" name="title" id="title" class="form-control mb-2" placeholder="질문 제목" required>
+    <textarea name="content" id="content" class="form-control mb-2" rows="3" placeholder="질문 내용" required></textarea>
 
-<form method="POST" enctype="multipart/form-data" id="questionForm">
-  <input type="hidden" name="id" id="questionId">
+    <!-- 파일 입력 -->
+    <div id="fileInputs" class="mb-2">
+      <input type="file" name="files" class="form-control mb-1" multiple>
+    </div>
+    <div class="d-flex mb-3">
+      <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
+      <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
+    </div>
 
-  <input type="text" name="title" id="title" class="form-control mb-2" placeholder="질문 제목" required>
-  <textarea name="content" id="content" class="form-control mb-2" rows="3" placeholder="질문 내용" required></textarea>
+    <button type="submit" class="btn btn-success w-100 mt-2">📤 등록 / 수정 완료</button>
+  </form>
 
-  <div id="fileInputs">
-    <input type="file" name="files" class="form-control mb-1">
-  </div>
+  <hr>
+  <h4 class="fw-bold mt-4 mb-3">📚 등록된 질문</h4>
 
-  <div class="d-flex mb-3">
-    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
-    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
-  </div>
+  {% if questions and questions|length > 0 %}
+    {% for q in questions %}
+    <div class="border rounded p-3 mb-3 bg-light shadow-sm">
+      <h5 class="fw-bold text-dark">{{ q.title }}</h5>
+      <p>{{ q.content }}</p>
 
-  <button type="submit" class="btn btn-success w-100 mt-2">📤 등록 / 수정 완료</button>
-</form>
-
-<hr>
-
-<h4 class="fw-bold mt-4">📚 등록된 질문</h4>
-
-{% if questions and questions|length > 0 %}
-  {% for q in questions %}
-  <div class="border rounded p-3 mb-3 bg-light shadow-sm">
-    <h5 class="fw-bold">{{ q.title }}</h5>
-    <p style="white-space: pre-wrap;">{{ q.content }}</p>
-
-    {% if q.files %}
+      {% if q.files %}
       <p>📎 첨부파일:
         {% for f in (q.files or '').split(';') if f.strip() %}
           <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>
-          <form action="{{ url_for('delete_question', q_id=q.id) }}" method="POST" style="display:inline;">
-            <button class="btn btn-sm btn-outline-danger ms-1">❌</button>
-          </form>
           {% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
-    {% endif %}
+      {% endif %}
 
-    <small class="text-muted">작성자: {{ q.email }} | {{ q.date }}</small>
-
-    <div class="mt-2">
-      <button class="btn btn-sm btn-outline-primary" onclick="editQuestion('{{ q.id }}', '{{ q.title|escape }}', `{{ q.content|escape }}`)">✏️ 수정</button>
-      <form action="{{ url_for('delete_question', q_id=q.id) }}" method="POST" style="display:inline;">
-        <button class="btn btn-sm btn-outline-danger">🗑️ 삭제</button>
-      </form>
+      <small class="text-muted">작성자: {{ q.email }} ｜ {{ q.date }}</small>
+      <div class="mt-2">
+        <button type="button" class="btn btn-sm btn-outline-primary me-2"
+                onclick="editQuestion('{{ q.id }}', '{{ q.title|escape }}', '{{ q.content|escape }}')">✏️ 수정</button>
+        <a href="{{ url_for('questions_page', delete=q.id) }}" 
+           class="btn btn-sm btn-outline-danger"
+           onclick="return confirm('이 질문을 삭제하시겠습니까?')">🗑️ 삭제</a>
+      </div>
     </div>
-  </div>
-  {% endfor %}
-{% else %}
-  <p class="text-muted">등록된 질문이 없습니다.</p>
-{% endif %}
+    {% endfor %}
+  {% else %}
+    <p class="text-muted">등록된 질문이 없습니다.</p>
+  {% endif %}
+</div>
 
-<!-- 🧩 JS: 파일·질문 관리 -->
+<!-- 🧩 JS: 파일 추가/삭제 + 수정 모드 -->
 <script>
 function addFileInput() {
   const div = document.createElement('div');
-  div.innerHTML = '<input type="file" name="files" class="form-control mb-1">';
+  div.innerHTML = '<input type="file" name="files" class="form-control mb-1" multiple>';
   document.getElementById('fileInputs').appendChild(div);
 }
 
@@ -71,12 +68,20 @@ function removeFileInput() {
 }
 
 function editQuestion(id, title, content) {
-  document.getElementById('questionId').value = id;
-  document.getElementById('title').value = title;
-  document.getElementById('content').value = content;
+  document.getElementById("edit_id").value = id;
+  document.getElementById("title").value = title;
+  document.getElementById("content").value = content;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
 
+<!-- 💬 교수 팝업 메시지 -->
+{% if popup_msg %}
+<div id="profPopup" class="position-fixed bg-primary text-white rounded shadow p-3"
+     style="top: 25%; right: 20px; z-index: 9999; min-width: 250px;">
+  <strong>📢 교수 메시지</strong>
+  <p class="mb-1">{{ popup_msg }}</p>
+</div>
+{% endif %}
 {% endblock %}
 
