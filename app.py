@@ -4,12 +4,14 @@
 # - 게시 확정 → 게시 완료 → 수정 게시 자동 전환
 # - 한글 파일명 완전 지원 + 파일 미첨부시 "없음"
 # - 교수 메시지 상단 하늘색 배경 + 파란 글씨 + sticky 고정
+# - 로그인 안 하면 모든 게시판 접근 차단 (보안 강화 완성)
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 import pandas as pd
 import os, re
 from datetime import datetime
 from werkzeug.utils import secure_filename
+from functools import wraps
 
 # ───────────── Flask 설정 ─────────────
 app = Flask(__name__)
@@ -21,13 +23,21 @@ DATA_QUESTIONS = os.path.join(BASE_DIR, "questions.csv")
 DATA_MESSAGES = os.path.join(BASE_DIR, "professor_messages.csv")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# ───────────── 로그인 필수 데코레이터 ─────────────
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "email" not in session:
+            flash("로그인 후 이용 가능합니다.", "warning")
+            return redirect(url_for("home"))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # ───────────── 한글 파일명 보존 ─────────────
 def sanitize_filename(filename):
     filename = os.path.basename(filename)
     filename = re.sub(r"[\\/]", "_", filename)
     return filename.strip()
-
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path):
@@ -43,10 +53,8 @@ def load_csv(path):
             return pd.DataFrame(columns=["id", "content", "date", "status"])
         return pd.DataFrame()
 
-
 def save_csv(path, df):
     df.to_csv(path, index=False, encoding="utf-8-sig")
-
 
 # ───────────── 로그인 ─────────────
 @app.route("/", methods=["GET", "POST"])
@@ -82,7 +90,6 @@ def home():
             message = "❌ 등록되지 않은 이메일입니다."
     return render_template("home.html", message=message)
 
-
 # ───────────── 로그아웃 ─────────────
 @app.route("/logout")
 def logout():
@@ -90,18 +97,14 @@ def logout():
     flash("👋 로그아웃되었습니다.", "info")
     return redirect(url_for("home"))
 
-
 # ───────────── 질문 게시판 ─────────────
 @app.route("/questions", methods=["GET", "POST"])
+@login_required
 def questions():
-    if "email" not in session:
-        flash("로그인 후 이용 가능합니다.", "warning")
-        return redirect(url_for("home"))
-
     q = load_csv(DATA_QUESTIONS)
     m = load_csv(DATA_MESSAGES)
 
-    # 교수 메시지: status=="done" 중 가장 최신 것만 표시
+    # 교수 메시지: status=="done" 중 최신 것만 표시
     professor_message = None
     if not m.empty:
         latest_done = m[m["status"] == "done"]
@@ -131,18 +134,15 @@ def questions():
         save_csv(DATA_QUESTIONS, q)
         return redirect(url_for("questions"))
 
-    # ✅ popup_msg 완전 제거 → professor_message만 전달
-    return render_template(
-        "questions.html",
-        questions=q.to_dict("records"),
-        professor_message=professor_message,
-        role=session.get("role"),
-        email=session.get("email")
-    )
-
+    return render_template("questions.html",
+                           questions=q.to_dict("records"),
+                           professor_message=professor_message,
+                           role=session.get("role"),
+                           email=session.get("email"))
 
 # ───────────── 메시지 관리 ─────────────
 @app.route("/message", methods=["GET", "POST"])
+@login_required
 def message():
     if session.get("role") != "professor":
         flash("권한이 없습니다.", "danger")
@@ -163,9 +163,9 @@ def message():
 
     return render_template("message.html", messages=m.to_dict("records"))
 
-
-# 게시 확정 / 수정 게시 공용 라우트
+# ───────────── 메시지 확정 ─────────────
 @app.route("/confirm_message/<int:m_id>", methods=["POST"])
+@login_required
 def confirm_message(m_id):
     m = load_csv(DATA_MESSAGES)
     if m_id in m["id"].values:
@@ -175,6 +175,7 @@ def confirm_message(m_id):
 
 # ───────────── 메시지 수정 ─────────────
 @app.route("/edit_message/<int:m_id>", methods=["POST"])
+@login_required
 def edit_message(m_id):
     m = load_csv(DATA_MESSAGES)
     if m_id in m["id"].values:
@@ -185,11 +186,19 @@ def edit_message(m_id):
         save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
 
-
-
+# ───────────── 메시지 삭제 ─────────────
+@app.route("/delete_message/<int:m_id>", methods=["POST"])
+@login_required
+def delete_message(m_id):
+    m = load_csv(DATA_MESSAGES)
+    if m_id in m["id"].values:
+        m = m[m["id"] != m_id]
+        save_csv(DATA_MESSAGES, m)
+    return redirect(url_for("message"))
 
 # ───────────── 질문 수정 ─────────────
 @app.route("/edit_question/<int:q_id>", methods=["POST"])
+@login_required
 def edit_question(q_id):
     q = load_csv(DATA_QUESTIONS)
     if q.empty or q_id not in q["id"].values:
@@ -213,21 +222,22 @@ def edit_question(q_id):
     save_csv(DATA_QUESTIONS, q)
     return redirect(url_for("questions"))
 
-
 # ───────────── 질문 삭제 ─────────────
 @app.route("/delete_question/<int:q_id>", methods=["POST"])
+@login_required
 def delete_question(q_id):
     q = load_csv(DATA_QUESTIONS)
     q = q[q["id"] != q_id]
     save_csv(DATA_QUESTIONS, q)
     return redirect(url_for("questions"))
 
-
 # ───────────── 파일 보기 ─────────────
 @app.route("/uploads/<path:filename>")
+@login_required
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-
+# ───────────── 실행 ─────────────
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
