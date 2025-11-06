@@ -4,7 +4,7 @@
 # - 게시 확정 → 게시 완료 → 수정 게시 자동 전환
 # - 한글 파일명 완전 지원 + 파일 미첨부시 "없음"
 # - 교수 메시지 상단 하늘색 배경 + 파란 글씨 + sticky 고정
-# - 로그인 안 하면 모든 게시판 접근 차단 (보안 강화 완성)
+# - 로그인 안 하면 질문게시판, 교수페이지 접근 차단 완전 적용
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 import pandas as pd
@@ -16,6 +16,11 @@ from functools import wraps
 # ───────────── Flask 설정 ─────────────
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
+
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=True
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
@@ -104,12 +109,13 @@ def questions():
     q = load_csv(DATA_QUESTIONS)
     m = load_csv(DATA_MESSAGES)
 
-    # 교수 메시지: status=="done" 중 최신 것만 표시
+    # ✅ 교수 메시지 표시: status=="done" 중 최신 메시지를 dict로 전달
     professor_message = None
     if not m.empty:
         latest_done = m[m["status"] == "done"]
         if not latest_done.empty:
-            professor_message = latest_done.iloc[-1]["content"]
+            last = latest_done.iloc[-1]
+            professor_message = {"content": last["content"], "date": last["date"]}
 
     if request.method == "POST":
         content = request.form.get("content")
@@ -163,7 +169,7 @@ def message():
 
     return render_template("message.html", messages=m.to_dict("records"))
 
-# ───────────── 메시지 확정 ─────────────
+# ───────────── 메시지 확정/수정/삭제 ─────────────
 @app.route("/confirm_message/<int:m_id>", methods=["POST"])
 @login_required
 def confirm_message(m_id):
@@ -173,7 +179,6 @@ def confirm_message(m_id):
         save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
 
-# ───────────── 메시지 수정 ─────────────
 @app.route("/edit_message/<int:m_id>", methods=["POST"])
 @login_required
 def edit_message(m_id):
@@ -186,7 +191,6 @@ def edit_message(m_id):
         save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
 
-# ───────────── 메시지 삭제 ─────────────
 @app.route("/delete_message/<int:m_id>", methods=["POST"])
 @login_required
 def delete_message(m_id):
@@ -196,7 +200,7 @@ def delete_message(m_id):
         save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
 
-# ───────────── 질문 수정 ─────────────
+# ───────────── 질문 수정/삭제 ─────────────
 @app.route("/edit_question/<int:q_id>", methods=["POST"])
 @login_required
 def edit_question(q_id):
@@ -222,7 +226,6 @@ def edit_question(q_id):
     save_csv(DATA_QUESTIONS, q)
     return redirect(url_for("questions"))
 
-# ───────────── 질문 삭제 ─────────────
 @app.route("/delete_question/<int:q_id>", methods=["POST"])
 @login_required
 def delete_question(q_id):
@@ -240,4 +243,5 @@ def uploaded_file(filename):
 # ───────────── 실행 ─────────────
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
 
