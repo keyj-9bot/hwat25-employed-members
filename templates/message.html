@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-3">📢 교수 메시지 등록</h3>
+
+<!-- 🔹 메시지 등록 폼 -->
+<form method="POST" class="mb-4">
+  <textarea name="content" class="form-control mb-2" rows="3" placeholder="학생들에게 전달할 공지나 메시지를 입력하세요" required></textarea>
+  <button type="submit" class="btn btn-primary w-100">📤 등록</button>
+</form>
+
+<hr>
+
+<!-- 🔹 등록된 메시지 목록 -->
+{% if messages and messages|length > 0 %}
+  {% for msg in messages %}
+  <div class="border rounded p-3 mb-3 bg-light shadow-sm">
+    <p class="mb-2">{{ msg.content }}</p>
+    <small class="text-muted">{{ msg.date }}</small>
+
+    <form action="{{ url_for('edit_message', m_id=msg.id) }}" method="POST" class="mt-2">
+      <textarea name="content" class="form-control mb-2" rows="2">{{ msg.content }}</textarea>
+      <button type="submit" class="btn btn-outline-info btn-sm w-100 mb-1">✏️ 수정</button>
+    </form>
+
+    <form action="{{ url_for('delete_message', m_id=msg.id) }}" method="POST">
+      <button type="submit" class="btn btn-outline-danger btn-sm w-100">🗑️ 삭제</button>
+    </form>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted">등록된 메시지가 없습니다.</p>
+{% endif %}
+
+{% endblock %}
