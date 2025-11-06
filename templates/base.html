@@ -2,104 +2,39 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>화트25 취업생 공유 사이트</title>
+  <title>💼 hwat25-employed members</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body {
-      background-color: #f8f9fa;
-      font-family: 'Segoe UI', '맑은 고딕', sans-serif;
-    }
-
-    nav.navbar {
-      background-color: #004085;
-    }
-
-    nav a.nav-link, nav .navbar-brand {
-      color: #fff !important;
-      font-weight: 500;
-    }
-
-    .container {
-      max-width: 800px;
-    }
-
-    /* 🔹 플래시 메시지 스타일 */
-    .flash-msg {
-      position: fixed;
-      top: 15%;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1050;
-      width: auto;
-      max-width: 500px;
-    }
-
-    /* 🔹 교수 팝업 메시지 위치 (상부로 약간 조정) */
+    body { background: #f9f9f9; }
     #profPopup {
-      position: fixed;
-      top: 20%;   /* 👈 이전 25% → 상부로 조정 */
-      right: 20px;
-      z-index: 9999;
-      background: #007bff;
-      color: white;
-      border-radius: 10px;
-      padding: 15px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      min-width: 250px;
-      max-width: 300px;
-      animation: fadeIn 0.5s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
+      position: fixed; top: 70px; right: 20px;
+      background: #fff3cd; color: #333;
+      padding: 12px 18px; border: 1px solid #ffeeba;
+      border-radius: 12px; box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      z-index: 2000;
     }
   </style>
 </head>
-
 <body>
-  <!-- 🔹 상단 네비게이션 -->
-  <nav class="navbar navbar-expand-lg mb-4">
-    <div class="container">
-      <a class="navbar-brand" href="/">🎓 화트25 취업생 공유 사이트</a>
-      <div class="ms-auto">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">HWAT25</a>
+      <div>
+        {% if session.get("role") == "professor" %}
+          <a href="{{ url_for('questions') }}" class="btn btn-outline-light btn-sm me-2">질문게시판</a>
+          <a href="{{ url_for('message') }}" class="btn btn-outline-light btn-sm me-2">교수메시지</a>
+        {% elif session.get("role") == "student" %}
+          <a href="{{ url_for('questions') }}" class="btn btn-outline-light btn-sm me-2">질문게시판</a>
+        {% endif %}
         {% if session.get("email") %}
-          {% if session.get("role") == "professor" %}
-            <a href="{{ url_for('professor_page') }}" class="nav-link d-inline">📢 교수메시지</a>
-          {% endif %}
-          <a href="{{ url_for('questions_page') }}" class="nav-link d-inline">💬 질문공유</a>
-          <a href="{{ url_for('logout') }}" class="nav-link d-inline text-warning">🚪 로그아웃</a>
+          <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">로그아웃</a>
         {% endif %}
       </div>
     </div>
   </nav>
 
-  <!-- 🔹 메인 콘텐츠 -->
-  <div class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-msg">
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show shadow" role="alert">
-              {{ message }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-    
+  <div class="container mb-5">
     {% block content %}{% endblock %}
   </div>
-
-  <!-- 🔹 교수 팝업 메시지 -->
-  {% if popup_msg %}
-  <div id="profPopup">
-    <strong>📢 교수님 메시지</strong><br>
-    {{ popup_msg }}
-  </div>
-  {% endif %}
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
