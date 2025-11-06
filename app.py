@@ -1,22 +1,14 @@
 # -*- coding: utf-8 -*-
-# Final Stable Edition (Key 교수님, 2025-11-06)
-# - 교수/학생 계정 분리
-# - 파일 미첨부 시 "없음" 자동 처리
-# - 한글 파일명 완전 지원 (secure_filename 제거)
-# - 로그인 메시지 제거
-# - 교수 메시지 팝업 유지
+# hwat25-employed-members (Key 교수님, 2025-11-06)
+# - 교수 메시지 3단계 게시 관리 시스템
+# - 게시 확정 → 게시 완료 → 수정 게시 자동 전환
+# - 한글 파일명 완전 지원 + 파일 미첨부시 "없음"
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 import pandas as pd
 import os, re
 from datetime import datetime
-
-# ───────────── 한글 파일명 보존 함수 ─────────────
-def sanitize_filename(filename):
-    filename = os.path.basename(filename)
-    # 슬래시, 백슬래시 제거 (한글/영문/숫자/특수문자 허용)
-    filename = re.sub(r"[\\/]", "_", filename)
-    return filename.strip()
+from werkzeug.utils import secure_filename
 
 # ───────────── Flask 설정 ─────────────
 app = Flask(__name__)
@@ -27,6 +19,14 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 DATA_QUESTIONS = os.path.join(BASE_DIR, "questions.csv")
 DATA_MESSAGES = os.path.join(BASE_DIR, "professor_messages.csv")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+# ───────────── 한글 파일명 보존 ─────────────
+def sanitize_filename(filename):
+    filename = os.path.basename(filename)
+    filename = re.sub(r"[\\/]", "_", filename)
+    return filename.strip()
+
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path):
@@ -39,13 +39,15 @@ def load_csv(path):
         if "questions" in path:
             return pd.DataFrame(columns=["id", "email", "title", "content", "files", "date"])
         elif "messages" in path:
-            return pd.DataFrame(columns=["id", "content", "date"])
+            return pd.DataFrame(columns=["id", "content", "date", "status"])
         return pd.DataFrame()
+
 
 def save_csv(path, df):
     df.to_csv(path, index=False, encoding="utf-8-sig")
 
-# ───────────── 로그인 페이지 ─────────────
+
+# ───────────── 로그인 ─────────────
 @app.route("/", methods=["GET", "POST"])
 def home():
     message = None
@@ -77,8 +79,8 @@ def home():
             return redirect(url_for("questions"))
         else:
             message = "❌ 등록되지 않은 이메일입니다."
-
     return render_template("home.html", message=message)
+
 
 # ───────────── 로그아웃 ─────────────
 @app.route("/logout")
@@ -87,7 +89,8 @@ def logout():
     flash("👋 로그아웃되었습니다.", "info")
     return redirect(url_for("home"))
 
-# ───────────── 질문게시판 ─────────────
+
+# ───────────── 질문 게시판 ─────────────
 @app.route("/questions", methods=["GET", "POST"])
 def questions():
     if "email" not in session:
@@ -96,7 +99,13 @@ def questions():
 
     q = load_csv(DATA_QUESTIONS)
     m = load_csv(DATA_MESSAGES)
-    professor_message = m.iloc[-1].to_dict() if not m.empty else None
+
+    # 교수 메시지: status=="done" 중 가장 최신 것만 팝업으로 표시
+    popup_msg = None
+    if not m.empty:
+        latest_done = m[m["status"] == "done"]
+        if not latest_done.empty:
+            popup_msg = latest_done.iloc[-1]["content"]
 
     if request.method == "POST":
         content = request.form.get("content")
@@ -114,12 +123,8 @@ def questions():
 
         new_id = q["id"].max() + 1 if not q.empty else 1
         new_row = pd.DataFrame([{
-            "id": new_id,
-            "email": email,
-            "title": "",
-            "content": content,
-            "files": file_str,
-            "date": date
+            "id": new_id, "email": email, "title": "",
+            "content": content, "files": file_str, "date": date
         }])
         q = pd.concat([q, new_row], ignore_index=True)
         save_csv(DATA_QUESTIONS, q)
@@ -127,56 +132,16 @@ def questions():
 
     return render_template("questions.html",
                            questions=q.to_dict("records"),
-                           professor_message=professor_message,
+                           popup_msg=popup_msg,
                            role=session.get("role"),
                            email=session.get("email"))
 
-# ───────────── 질문 수정 ─────────────
-@app.route("/edit_question/<int:q_id>", methods=["POST"])
-def edit_question(q_id):
-    if "email" not in session:
-        return redirect(url_for("home"))
 
-    q = load_csv(DATA_QUESTIONS)
-    if q.empty or q_id not in q["id"].values:
-        flash("❌ 해당 질문을 찾을 수 없습니다.", "danger")
-        return redirect(url_for("questions"))
-
-    content = request.form.get("content")
-
-    filenames = []
-    uploaded_files = request.files.getlist("files")
-    for f in uploaded_files:
-        if f and f.filename:
-            filename = sanitize_filename(f.filename)
-            f.save(os.path.join(UPLOAD_FOLDER, filename))
-            filenames.append(filename)
-
-    old_files = str(q.loc[q["id"] == q_id, "files"].values[0])
-    combined = old_files + (";" if old_files != "없음" and filenames else "") + ";".join(filenames)
-    if combined.strip(";") == "":
-        combined = "없음"
-
-    q.loc[q["id"] == q_id, ["content", "files"]] = [content, combined]
-    save_csv(DATA_QUESTIONS, q)
-    return redirect(url_for("questions"))
-
-# ───────────── 질문 삭제 ─────────────
-@app.route("/delete_question/<int:q_id>", methods=["POST"])
-def delete_question(q_id):
-    if "email" not in session:
-        return redirect(url_for("home"))
-
-    q = load_csv(DATA_QUESTIONS)
-    q = q[q["id"] != q_id]
-    save_csv(DATA_QUESTIONS, q)
-    return redirect(url_for("questions"))
-
-# ───────────── 교수 메시지 관리 ─────────────
+# ───────────── 메시지 관리 ─────────────
 @app.route("/message", methods=["GET", "POST"])
 def message():
     if session.get("role") != "professor":
-        flash("권한이 없습니다. (교수 전용 페이지)", "danger")
+        flash("권한이 없습니다.", "danger")
         return redirect(url_for("questions"))
 
     m = load_csv(DATA_MESSAGES)
@@ -185,37 +150,54 @@ def message():
         content = request.form.get("content")
         date = datetime.now().strftime("%Y-%m-%d %H:%M")
         new_id = m["id"].max() + 1 if not m.empty else 1
-        new_row = pd.DataFrame([{"id": new_id, "content": content, "date": date}])
+        new_row = pd.DataFrame([{
+            "id": new_id, "content": content, "date": date, "status": "confirmed"
+        }])
         m = pd.concat([m, new_row], ignore_index=True)
         save_csv(DATA_MESSAGES, m)
         return redirect(url_for("message"))
 
     return render_template("message.html", messages=m.to_dict("records"))
 
-@app.route("/edit_message/<int:m_id>", methods=["POST"])
-def edit_message(m_id):
-    if session.get("role") != "professor":
-        return redirect(url_for("questions"))
+
+# 게시 확정 / 수정 게시 공용 라우트
+@app.route("/confirm_message/<int:m_id>", methods=["POST"])
+def confirm_message(m_id):
     m = load_csv(DATA_MESSAGES)
-    content = request.form.get("content")
-    m.loc[m["id"] == m_id, "content"] = content
-    save_csv(DATA_MESSAGES, m)
+    if m_id in m["id"].values:
+        m.loc[m["id"] == m_id, "status"] = "done"
+        save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
 
+
+# 수정
+@app.route("/edit_message/<int:m_id>", methods=["POST"])
+def edit_message(m_id):
+    m = load_csv(DATA_MESSAGES)
+    if m_id in m["id"].values:
+        content = request.form.get("content")
+        m.loc[m["id"] == m_id, ["content", "status"]] = [content, "edited"]
+        m.loc[m["id"] == m_id, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        save_csv(DATA_MESSAGES, m)
+    return redirect(url_for("message"))
+
+
+# 삭제
 @app.route("/delete_message/<int:m_id>", methods=["POST"])
 def delete_message(m_id):
-    if session.get("role") != "professor":
-        return redirect(url_for("questions"))
     m = load_csv(DATA_MESSAGES)
     m = m[m["id"] != m_id]
     save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
+
 
 # ───────────── 파일 보기 ─────────────
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# ───────────── 실행 ─────────────
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
+

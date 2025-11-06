@@ -1,30 +1,40 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3 class="fw-bold mb-3">📢 교수 메시지 등록</h3>
+<h3 class="fw-bold mb-3">📢 교수 메시지 관리</h3>
 
-<!-- 🔹 메시지 등록 폼 -->
-<form method="POST" class="mb-4">
-  <textarea name="content" class="form-control mb-2" rows="3" placeholder="학생들에게 전달할 공지나 메시지를 입력하세요" required></textarea>
-  <button type="submit" class="btn btn-primary w-100">📤 등록</button>
+<form method="POST">
+  <textarea name="content" class="form-control mb-2" rows="3" placeholder="새로운 공지 내용을 입력하세요" required></textarea>
+  <button type="submit" class="btn btn-primary w-100">➕ 새 메시지 등록</button>
 </form>
 
 <hr>
 
-<!-- 🔹 등록된 메시지 목록 -->
 {% if messages and messages|length > 0 %}
-  {% for msg in messages %}
-  <div class="border rounded p-3 mb-3 bg-light shadow-sm">
-    <p class="mb-2">{{ msg.content }}</p>
-    <small class="text-muted">{{ msg.date }}</small>
+  {% for m in messages %}
+  <div class="border p-3 mb-3 bg-light rounded shadow-sm">
+    <p class="mb-1">{{ m.content }}</p>
+    <small class="text-muted">{{ m.date }}</small>
 
-    <form action="{{ url_for('edit_message', m_id=msg.id) }}" method="POST" class="mt-2">
-      <textarea name="content" class="form-control mb-2" rows="2">{{ msg.content }}</textarea>
-      <button type="submit" class="btn btn-outline-info btn-sm w-100 mb-1">✏️ 수정</button>
+    {% if m.status == "confirmed" %}
+      <form method="POST" action="{{ url_for('confirm_message', m_id=m.id) }}">
+        <button class="btn btn-success btn-sm w-100 mt-2">📢 게시 확정</button>
+      </form>
+    {% elif m.status == "done" %}
+      <button class="btn btn-secondary btn-sm w-100 mt-2" disabled>✅ 게시 완료</button>
+    {% elif m.status == "edited" %}
+      <form method="POST" action="{{ url_for('confirm_message', m_id=m.id) }}">
+        <button class="btn btn-warning btn-sm w-100 mt-2">♻️ 수정 게시</button>
+      </form>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('edit_message', m_id=m.id) }}" class="mt-2">
+      <textarea name="content" class="form-control mb-2" rows="2">{{ m.content }}</textarea>
+      <button class="btn btn-outline-info btn-sm w-100">✏️ 수정</button>
     </form>
 
-    <form action="{{ url_for('delete_message', m_id=msg.id) }}" method="POST">
-      <button type="submit" class="btn btn-outline-danger btn-sm w-100">🗑️ 삭제</button>
+    <form method="POST" action="{{ url_for('delete_message', m_id=m.id) }}">
+      <button class="btn btn-outline-danger btn-sm w-100 mt-1">🗑️ 삭제</button>
     </form>
   </div>
   {% endfor %}
@@ -33,3 +43,4 @@
 {% endif %}
 
 {% endblock %}
+

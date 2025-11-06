@@ -3,14 +3,25 @@
 
 <h3 class="fw-bold mb-3">💬 취업생 알쓸잡 내용 공유</h3>
 
+<!-- 🔹 교수 인사말(상단 고정형) -->
+{% if professor_message %}
+<div class="alert alert-warning shadow-sm mb-4" style="border-radius: 12px;">
+  <strong>📢 교수 메시지:</strong>
+  {{ professor_message.content }}
+  <span class="text-muted small ms-2">({{ professor_message.date }})</span>
+</div>
+{% endif %}
+
 <!-- 🔹 질문 등록 폼 -->
 <form method="POST" enctype="multipart/form-data">
-  <textarea name="content" class="form-control mb-2" rows="3" placeholder="직장생활에서 '알아두면 쓸모있는 잡다한' 내용을 이곳에 입력하세요" required></textarea>
+  <textarea name="content" class="form-control mb-2" rows="3"
+    placeholder="직장생활에서 '알아두면 쓸모있는 잡다한' 내용을 이곳에 입력하세요" required></textarea>
 
   <!-- 📎 파일 업로드 -->
   <div id="fileInputs">
     <input type="file" name="files" class="form-control mb-1">
   </div>
+
   <div class="d-flex mb-3">
     <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
     <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
@@ -29,15 +40,14 @@
     <p id="content_{{ loop.index0 }}">{{ q.content or '' }}</p>
 
     {% if q.files and q.files != "없음" %}
-  <p>📎 첨부파일:
-    {% for f in (q.files|string).split(';') if f.strip() %}
-      <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
-    {% endfor %}
-  </p>
-{% else %}
-  <p class="text-muted">📎 첨부파일: 없음</p>
-{% endif %}
-
+      <p>📎 첨부파일:
+        {% for f in (q.files|string).split(';') if f.strip() %}
+          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
+    {% else %}
+      <p class="text-muted">📎 첨부파일: 없음</p>
+    {% endif %}
 
     <small class="text-muted">{{ q.date or '' }}</small>
 
@@ -47,7 +57,6 @@
       <button type="button" class="btn btn-sm btn-outline-info w-100 mb-1" onclick="toggleEdit({{ loop.index0 }})">✏️ 수정</button>
 
       <form action="{{ url_for('delete_question', q_id=q.id) }}" method="POST">
-
         <button type="submit" class="btn btn-sm btn-outline-danger w-100">🗑️ 삭제</button>
       </form>
     </div>
@@ -55,7 +64,6 @@
     <!-- 🔹 수정 입력창 -->
     <div id="editBox_{{ loop.index0 }}" class="mt-2" style="display:none;">
       <form action="{{ url_for('edit_question', q_id=q.id) }}" method="POST" enctype="multipart/form-data">
-
         <textarea name="content" class="form-control mb-2" rows="3">{{ q.content }}</textarea>
 
         <div id="editFileInputs_{{ loop.index0 }}">
@@ -75,11 +83,6 @@
   {% endfor %}
 {% else %}
   <p class="text-muted">등록된 질문이 없습니다.</p>
-{% endif %}
-
-<!-- 🔹 교수 메시지 팝업 -->
-{% if popup_msg %}
-<div id="profPopup">{{ popup_msg }}</div>
 {% endif %}
 
 <!-- 🧩 JS -->
