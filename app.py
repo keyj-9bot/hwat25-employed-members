@@ -173,6 +173,20 @@ def confirm_message(m_id):
         save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
 
+# ───────────── 메시지 수정 ─────────────
+@app.route("/edit_message/<int:m_id>", methods=["POST"])
+def edit_message(m_id):
+    m = load_csv(DATA_MESSAGES)
+    if m_id in m["id"].values:
+        new_content = request.form.get("content")
+        m.loc[m["id"] == m_id, "content"] = new_content
+        m.loc[m["id"] == m_id, "status"] = "edited"
+        m.loc[m["id"] == m_id, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        save_csv(DATA_MESSAGES, m)
+    return redirect(url_for("message"))
+
+
+
 
 # ───────────── 질문 수정 ─────────────
 @app.route("/edit_question/<int:q_id>", methods=["POST"])
