@@ -3,14 +3,23 @@
 
 <h3 class="fw-bold mb-3">💬 취업생 알쓸잡 내용 공유</h3>
 
-<!-- 🔹 교수 인사말(상단 고정형) -->
+<!-- 🔹 교수 인사말(상단 고정형, 파랑 강조형 + sticky) -->
 {% if professor_message %}
-<div class="alert alert-warning shadow-sm mb-4" style="border-radius: 12px;">
-  <strong>📢 교수 메시지:</strong>
-  {{ professor_message.content }}
+<div class="alert shadow-sm mb-4 text-center"
+     style="border-radius: 12px;
+            background-color: #f0f7ff;
+            border: 2px solid #3b82f6;
+            box-shadow: 0 2px 6px rgba(59,130,246,0.25);
+            padding: 12px;
+            position: sticky;
+            top: 10px;
+            z-index: 1000;">
+  <strong style="color: #1e40af;">📢 교수 메시지:</strong>
+  <span style="color: #1e40af; font-weight: bold;">{{ professor_message.content }}</span>
   <span class="text-muted small ms-2">({{ professor_message.date }})</span>
 </div>
 {% endif %}
+
 
 <!-- 🔹 질문 등록 폼 -->
 <form method="POST" enctype="multipart/form-data">
@@ -36,7 +45,8 @@
 {% if questions and questions|length > 0 %}
   {% for q in questions %}
   <div class="border rounded p-3 mb-3 bg-light shadow-sm">
-    <p class="mb-1"><strong>{{ q.email }}</strong></p>
+    <!-- ✅ 교수 이메일 비공개 처리 -->
+
     <p id="content_{{ loop.index0 }}">{{ q.content or '' }}</p>
 
     {% if q.files and q.files != "없음" %}
@@ -56,7 +66,6 @@
     <div class="mt-2">
       <button type="button" class="btn btn-sm btn-outline-info w-100 mb-1" onclick="toggleEdit({{ loop.index0 }})">✏️ 수정</button>
 
-      <!-- ✅ BuildError 방지: q.id|int 로 변환 -->
       <form action="{{ url_for('delete_question', q_id=q.id|int) }}" method="POST">
         <button type="submit" class="btn btn-sm btn-outline-danger w-100">🗑️ 삭제</button>
       </form>
@@ -113,4 +122,5 @@ function removeEditFileInput(index) {
 </script>
 
 {% endblock %}
+
 

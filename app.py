@@ -183,10 +183,12 @@ def questions():
         return redirect(url_for("questions"))
 
     return render_template("questions.html",
-                           questions=q.to_dict("records"),
-                           professor_message=professor_message,
-                           role=session.get("role"),
-                           email=session.get("email"))
+                       questions=q.to_dict("records"),
+                       popup_msg=popup_msg,
+                       professor_message=popup_msg,
+                       role=session.get("role"),
+                       email=session.get("email"))
+
 
 
 @app.route("/edit_question/<int:q_id>", methods=["POST"])
