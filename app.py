@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # hwat25-employed-members (Key 교수님, 2025-11-06)
-# - 교수 메시지 3단계 게시 관리 시스템
-# - 게시 확정 → 게시 완료 → 수정 게시 자동 전환
-# - 한글 파일명 완전 지원 + 파일 미첨부시 "없음"
+# - 로그인 초기화 오류 수정
+# - 교수 메시지 정상 표시 (게시 확정 시 질문게시판 상단에 출력)
+# - 기존 골격 완전 유지
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 import pandas as pd
@@ -50,6 +50,7 @@ def save_csv(path, df):
 # ───────────── 로그인 ─────────────
 @app.route("/", methods=["GET", "POST"])
 def home():
+    session.clear()  # ✅ 로그인 페이지 접근 시 세션 완전 초기화
     message = None
     if request.method == "POST":
         email = request.form.get("email", "").strip()
@@ -128,7 +129,7 @@ def edit_message(m_id):
 def confirm_message(m_id):
     m = load_csv(DATA_MESSAGES)
     if m_id in m["id"].values:
-        m.loc[m["id"] == m_id, "status"] = "done"
+        m.loc[m["id"] == m_id, "status"] = "done"  # ✅ 확정 시 상태 변경
         save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
 
@@ -151,12 +152,12 @@ def questions():
     q = load_csv(DATA_QUESTIONS)
     m = load_csv(DATA_MESSAGES)
 
-    # 교수 메시지: status == "done" 중 가장 최신 것만 표시
-    popup_msg = None
+    # ✅ status=="done" 중 최신 메시지를 professor_message로 표시
+    professor_message = None
     if not m.empty:
         latest_done = m[m["status"] == "done"]
         if not latest_done.empty:
-            popup_msg = latest_done.iloc[-1]["content"]
+            professor_message = latest_done.iloc[-1].to_dict()
 
     if request.method == "POST":
         content = request.form.get("content")
@@ -183,7 +184,7 @@ def questions():
 
     return render_template("questions.html",
                            questions=q.to_dict("records"),
-                           popup_msg=popup_msg,
+                           professor_message=professor_message,
                            role=session.get("role"),
                            email=session.get("email"))
 
@@ -229,4 +230,3 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-
