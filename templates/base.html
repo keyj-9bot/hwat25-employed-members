@@ -18,7 +18,7 @@
 <body>
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">HWAT25</a>
+      <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">화트25 취업생 공유의 장</a>
       <div>
         {% if session.get("role") == "professor" %}
           <a href="{{ url_for('questions') }}" class="btn btn-outline-light btn-sm me-2">질문게시판</a>
