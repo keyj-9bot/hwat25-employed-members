@@ -90,6 +90,57 @@ def logout():
     return redirect(url_for("home"))
 
 
+# ───────────── 교수 메시지 관리 ─────────────
+@app.route("/message", methods=["GET", "POST"])
+def message():
+    if session.get("role") != "professor":
+        flash("권한이 없습니다.", "danger")
+        return redirect(url_for("questions"))
+
+    m = load_csv(DATA_MESSAGES)
+
+    if request.method == "POST":
+        content = request.form.get("content")
+        date = datetime.now().strftime("%Y-%m-%d %H:%M")
+        new_id = m["id"].max() + 1 if not m.empty else 1
+        new_row = pd.DataFrame([{
+            "id": new_id, "content": content, "date": date, "status": "confirmed"
+        }])
+        m = pd.concat([m, new_row], ignore_index=True)
+        save_csv(DATA_MESSAGES, m)
+        return redirect(url_for("message"))
+
+    return render_template("message.html", messages=m.to_dict("records"))
+
+
+@app.route("/edit_message/<int:m_id>", methods=["POST"])
+def edit_message(m_id):
+    m = load_csv(DATA_MESSAGES)
+    if m_id in m["id"].values:
+        content = request.form.get("content")
+        m.loc[m["id"] == m_id, ["content", "status"]] = [content, "edited"]
+        m.loc[m["id"] == m_id, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        save_csv(DATA_MESSAGES, m)
+    return redirect(url_for("message"))
+
+
+@app.route("/confirm_message/<int:m_id>", methods=["POST"])
+def confirm_message(m_id):
+    m = load_csv(DATA_MESSAGES)
+    if m_id in m["id"].values:
+        m.loc[m["id"] == m_id, "status"] = "done"
+        save_csv(DATA_MESSAGES, m)
+    return redirect(url_for("message"))
+
+
+@app.route("/delete_message/<int:m_id>", methods=["POST"])
+def delete_message(m_id):
+    m = load_csv(DATA_MESSAGES)
+    m = m[m["id"] != m_id]
+    save_csv(DATA_MESSAGES, m)
+    return redirect(url_for("message"))
+
+
 # ───────────── 질문 게시판 ─────────────
 @app.route("/questions", methods=["GET", "POST"])
 def questions():
@@ -100,7 +151,7 @@ def questions():
     q = load_csv(DATA_QUESTIONS)
     m = load_csv(DATA_MESSAGES)
 
-    # 교수 메시지: status=="done" 중 가장 최신 것만 팝업으로 표시
+    # 교수 메시지: status == "done" 중 가장 최신 것만 표시
     popup_msg = None
     if not m.empty:
         latest_done = m[m["status"] == "done"]
@@ -137,40 +188,6 @@ def questions():
                            email=session.get("email"))
 
 
-# ───────────── 메시지 관리 ─────────────
-@app.route("/message", methods=["GET", "POST"])
-def message():
-    if session.get("role") != "professor":
-        flash("권한이 없습니다.", "danger")
-        return redirect(url_for("questions"))
-
-    m = load_csv(DATA_MESSAGES)
-
-    if request.method == "POST":
-        content = request.form.get("content")
-        date = datetime.now().strftime("%Y-%m-%d %H:%M")
-        new_id = m["id"].max() + 1 if not m.empty else 1
-        new_row = pd.DataFrame([{
-            "id": new_id, "content": content, "date": date, "status": "confirmed"
-        }])
-        m = pd.concat([m, new_row], ignore_index=True)
-        save_csv(DATA_MESSAGES, m)
-        return redirect(url_for("message"))
-
-    return render_template("message.html", messages=m.to_dict("records"))
-
-
-# 게시 확정 / 수정 게시 공용 라우트
-@app.route("/confirm_message/<int:m_id>", methods=["POST"])
-def confirm_message(m_id):
-    m = load_csv(DATA_MESSAGES)
-    if m_id in m["id"].values:
-        m.loc[m["id"] == m_id, "status"] = "done"
-        save_csv(DATA_MESSAGES, m)
-    return redirect(url_for("message"))
-
-
-# ───────────── 질문 수정 ─────────────
 @app.route("/edit_question/<int:q_id>", methods=["POST"])
 def edit_question(q_id):
     q = load_csv(DATA_QUESTIONS)
@@ -196,14 +213,12 @@ def edit_question(q_id):
     return redirect(url_for("questions"))
 
 
-# ───────────── 질문 삭제 ─────────────
 @app.route("/delete_question/<int:q_id>", methods=["POST"])
 def delete_question(q_id):
     q = load_csv(DATA_QUESTIONS)
     q = q[q["id"] != q_id]
     save_csv(DATA_QUESTIONS, q)
     return redirect(url_for("questions"))
-
 
 
 # ───────────── 파일 보기 ─────────────
@@ -214,5 +229,4 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-
 
