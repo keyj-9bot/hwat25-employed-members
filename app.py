@@ -170,25 +170,40 @@ def confirm_message(m_id):
     return redirect(url_for("message"))
 
 
-# 수정
-@app.route("/edit_message/<int:m_id>", methods=["POST"])
-def edit_message(m_id):
-    m = load_csv(DATA_MESSAGES)
-    if m_id in m["id"].values:
-        content = request.form.get("content")
-        m.loc[m["id"] == m_id, ["content", "status"]] = [content, "edited"]
-        m.loc[m["id"] == m_id, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-        save_csv(DATA_MESSAGES, m)
-    return redirect(url_for("message"))
+# ───────────── 질문 수정 ─────────────
+@app.route("/edit_question/<int:q_id>", methods=["POST"])
+def edit_question(q_id):
+    q = load_csv(DATA_QUESTIONS)
+    if q.empty or q_id not in q["id"].values:
+        return redirect(url_for("questions"))
+
+    content = request.form.get("content", "")
+    filenames = []
+    uploaded_files = request.files.getlist("files")
+    for f in uploaded_files:
+        if f and f.filename:
+            filename = sanitize_filename(f.filename)
+            f.save(os.path.join(UPLOAD_FOLDER, filename))
+            filenames.append(filename)
+
+    old_files = str(q.loc[q["id"] == q_id, "files"].values[0])
+    combined = old_files + (";" if old_files != "없음" and filenames else "") + ";".join(filenames)
+    if combined.strip(";") == "":
+        combined = "없음"
+
+    q.loc[q["id"] == q_id, ["content", "files"]] = [content, combined]
+    save_csv(DATA_QUESTIONS, q)
+    return redirect(url_for("questions"))
 
 
-# 삭제
-@app.route("/delete_message/<int:m_id>", methods=["POST"])
-def delete_message(m_id):
-    m = load_csv(DATA_MESSAGES)
-    m = m[m["id"] != m_id]
-    save_csv(DATA_MESSAGES, m)
-    return redirect(url_for("message"))
+# ───────────── 질문 삭제 ─────────────
+@app.route("/delete_question/<int:q_id>", methods=["POST"])
+def delete_question(q_id):
+    q = load_csv(DATA_QUESTIONS)
+    q = q[q["id"] != q_id]
+    save_csv(DATA_QUESTIONS, q)
+    return redirect(url_for("questions"))
+
 
 
 # ───────────── 파일 보기 ─────────────
