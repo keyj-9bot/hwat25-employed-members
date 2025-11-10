@@ -5,13 +5,17 @@
 # - 한글 파일명 완전 지원 + 파일 미첨부시 "없음"
 # - 교수 메시지 상단 하늘색 배경 + 파란 글씨 + sticky 고정
 # - 로그인 안 하면 질문게시판, 교수페이지 접근 차단 완전 적용
+# - ✅ 모든 시간 한국(KST, UTC+9) 기준으로 표시
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 import pandas as pd
 import os, re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from functools import wraps
+
+# ───────────── 한국시간(KST) 설정 ─────────────
+KST = timezone(timedelta(hours=9))
 
 # ───────────── Flask 설정 ─────────────
 app = Flask(__name__)
@@ -109,7 +113,6 @@ def questions():
     q = load_csv(DATA_QUESTIONS)
     m = load_csv(DATA_MESSAGES)
 
-    # ✅ 교수 메시지 표시: status=="done" 중 최신 메시지를 dict로 전달
     professor_message = None
     if not m.empty:
         latest_done = m[m["status"] == "done"]
@@ -120,7 +123,7 @@ def questions():
     if request.method == "POST":
         content = request.form.get("content")
         email = session.get("email", "익명")
-        date = datetime.now().strftime("%Y-%m-%d %H:%M")
+        date = datetime.now(KST).strftime("%Y-%m-%d %H:%M")  # ✅ 한국시간 적용
 
         filenames = []
         uploaded_files = request.files.getlist("files")
@@ -158,7 +161,7 @@ def message():
 
     if request.method == "POST":
         content = request.form.get("content")
-        date = datetime.now().strftime("%Y-%m-%d %H:%M")
+        date = datetime.now(KST).strftime("%Y-%m-%d %H:%M")  # ✅ 한국시간 적용
         new_id = m["id"].max() + 1 if not m.empty else 1
         new_row = pd.DataFrame([{
             "id": new_id, "content": content, "date": date, "status": "confirmed"
@@ -187,7 +190,7 @@ def edit_message(m_id):
         new_content = request.form.get("content")
         m.loc[m["id"] == m_id, "content"] = new_content
         m.loc[m["id"] == m_id, "status"] = "edited"
-        m.loc[m["id"] == m_id, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        m.loc[m["id"] == m_id, "date"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M")  # ✅ 한국시간 적용
         save_csv(DATA_MESSAGES, m)
     return redirect(url_for("message"))
 
